@@ -5,16 +5,21 @@ export class Remote {
   constructor(private pool: any) {}
 
   public prefix: string = "set -euo pipefail;";
-  private cwd: string | null;
+  private cwd: string | null = null;
 
   async local(template: TemplateStringsArray, ...subs: any[]) {
     return new Promise((resolve) => {
-      const proc = spawn(String.raw(template, ...subs), {});
+      const cmd = String.raw(template, ...subs);
+      const proc = spawn(cmd, {});
 
       proc.on("exit", (code, sig) => {
         resolve({
+          code,
           error: code !== 0,
-          stdout: proc.stdout,
+          stdout: null as any,
+          stderr: null as any,
+          cmd,
+          remote: null as any,
         } as RemoteResult);
       });
     });
