@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "rowen-example",
+  "version": "0.0.0",
+  "scripts": {
+    "start": "node -r \"esbuild-register\" ./deploy.ts"
+  }
+}

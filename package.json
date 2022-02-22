@@ -1,0 +1,15 @@
+{
+  "private": true,
+  "name": "rowen",
+  "version": "0.0.0",
+  "main": "index.js",
+  "author": "Hanakla<hanakla.dev@gmail.com>",
+  "license": "MIT",
+  "workspaces": [
+    "pkgs/*"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.14.23",
+    "esbuild-register": "^3.3.2"
+  }
+}
