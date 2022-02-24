@@ -1,24 +1,24 @@
 import Rowen, { RowenConfig } from "rowen/src";
 
-export default (rowen: Rowen): RowenConfig => ({
-  default: {
-    servers: [],
-    deployTo: "~/deploys/",
-    repository: "",
-  },
-  envs: {
-    sandbox: {
-      servers: ["example"],
-      deployTo: "~/",
+export default (rowen: Rowen): RowenConfig => {
+  //   rowenDeploy(rowen);
+
+  return {
+    default: {
+      deployTo: "~/tmp/rowen-test/",
+      repository: "git@github.com:hanakla/rowen.git",
     },
-    staging: {
-      servers: ["example"],
-      deployTo: "~/",
+    envs: {
+      sandbox: {
+        servers: [],
+      },
+      staging: {
+        servers: [],
+      },
+      production: {
+        servers: [],
+      },
     },
-    production: {
-      servers: ["example"],
-      deployTo: "~/",
-    },
-  },
-  //   deploy: (rowen) => {},
-});
+    //   deploy: (rowen) => {},
+  };
+};

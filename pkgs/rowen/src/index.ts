@@ -1,27 +1,7 @@
 import { Remote } from "./remote";
 
-export type DeployEnv = {
-  deployTo: string;
-  repository?: string;
-  servers: string[];
-};
+export interface ExtendedRowenEvents {}
 
-export type RowenConfig = {
-  default: DeployEnv;
-  envs: { [name: string]: DeployEnv };
-};
-
-export type RemoteResult = {
-  remote: any;
-  error: boolean;
-  stdout: string;
-  stderr: string;
-  code: number;
-  cmd?: string;
-};
-
-export type RowenEvents = {
-  fetched: [Remote];
-};
-
+export { fetchTask as fetchTask } from "./tasks/fetch";
+export { type RowenConfig, type DeployEnvOption } from "./types";
 export { default } from "./Rowen";

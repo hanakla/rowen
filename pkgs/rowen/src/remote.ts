@@ -1,72 +1,186 @@
-import { spawn } from "child_process";
-import { RemoteResult } from ".";
+import { exec, ExecOptions } from "child_process";
+import { RemoteResult } from "./types";
+import streamToString from "stream-to-string";
+import { quote } from "./utils";
 
+type LocalExecuter = {
+  (options: ExecOptions): LocalExecuter;
+  then<T1, T2>(
+    fulfilled: (v: RemoteResult) => T1 | PromiseLike<T1>,
+    rejected: (e: any) => T2 | PromiseLike<T2>
+  ): PromiseLike<T1>;
+};
+
+type RemoteExecuter = {
+  (options: { cwd?: string }): RemoteExecuter;
+  then<T1, T2>(
+    fullfiled: (v: RemoteResult[]) => T1 | PromiseLike<T1>,
+    rejected: (e: RemoteResult[]) => T2 | PromiseLike<T2>
+  ): void;
+};
 export class Remote {
   constructor(private pool: any) {}
 
-  public prefix: string = "set -euo pipefail;";
-  private cwd: string | null = null;
+  /** command prefix for remotes (not local) */
+  public remotePrefix: string = "set -euo pipefail;";
+  private remoteCwd: string | null = null;
 
-  async local(template: TemplateStringsArray, ...subs: any[]) {
-    return new Promise((resolve) => {
-      const cmd = String.raw(template, ...subs);
-      const proc = spawn(cmd, {});
+  local = Object.assign(
+    (template: TemplateStringsArray, ...subs: any[]): LocalExecuter => {
+      let _opt: ExecOptions = {};
 
-      proc.on("exit", (code, sig) => {
-        resolve({
-          code,
-          error: code !== 0,
-          stdout: null as any,
-          stderr: null as any,
-          cmd,
-          remote: null as any,
-        } as RemoteResult);
+      const options = (opt: ExecOptions) => {
+        _opt = opt;
+        return execute;
+      };
+
+      const execute: LocalExecuter = Object.assign(options, {
+        then: (fullfiled: (v: RemoteResult) => any, rejected: any) => {
+          return new Promise<RemoteResult>((resolve, reject) => {
+            const cmd = String.raw(template, ...subs.map((str) => quote(str)));
+            const proc = exec(cmd, {
+              ..._opt,
+              env: { ...process.env, ..._opt.env },
+            });
+            const outStream = streamToString(proc.stdout!);
+            const errStream = streamToString(proc.stderr!);
+
+            proc.on("error", async (err) => {
+              console.log(err);
+              reject({
+                code: proc.exitCode,
+                error: proc.exitCode !== 0,
+                stdout: await outStream,
+                stderr: await errStream,
+                cmd,
+                cwd: _opt.cwd ?? process.cwd(),
+                remote: null as any,
+              } as RemoteResult);
+            });
+
+            proc.on("exit", async (code, sig) => {
+              (code === 0 ? resolve : reject)({
+                code,
+                error: code !== 0,
+                stdout: await outStream,
+                stderr: await errStream,
+                cmd,
+                cwd: _opt.cwd ?? process.cwd(),
+                remote: null as any,
+              } as RemoteResult);
+            });
+          }).then(fullfiled, rejected);
+        },
       });
-    });
+
+      return execute;
+    },
+    {
+      nothrow: (...args: [TemplateStringsArray, ...any]) => {
+        const exec = this.local(...args);
+        const { then: run } = exec;
+        exec.then = (f) =>
+          new Promise<any>(async (res) => {
+            await run(res, res);
+          }).then(f);
+
+        return exec;
+      },
+    }
+  );
+
+  remote = Object.assign(
+    (tpl: string | TemplateStringsArray, ...subs: any[]): RemoteExecuter => {
+      const cmd = Array.isArray(tpl)
+        ? String.raw(tpl as TemplateStringsArray, ...subs)
+        : tpl;
+
+      let _opt = {};
+      const option = (opt: any) => {
+        _opt = opt;
+        return execute;
+      };
+
+      const execute: RemoteExecuter = Object.assign(option, {
+        then: async (
+          resolve: (v: RemoteResult[]) => void,
+          reject: (e: RemoteResult[]) => void
+        ) => {
+          let hasFailed = false;
+          const results = await Promise.allSettled(
+            this.pool.connections.map(async (con: any) => {
+              try {
+                const result = await con.run(
+                  `${this.remotePrefix}: ""} ${cmd}`,
+                  {
+                    cwd: this.remoteCwd,
+                    ..._opt,
+                  }
+                );
+
+                return {
+                  remote: con.remote,
+                  stdout: result.stdout,
+                  stderr: result.stderr,
+                  code: result.code ?? 0,
+                  cmd: result.child.spawnargs,
+                  error: false,
+                } as RemoteResult;
+              } catch (e: any) {
+                hasFailed = true;
+                return {
+                  remote: con.remote,
+                  stdout: e.stdout,
+                  stderr: e.stderr,
+                  code: e.code,
+                  cmd: e.cmd,
+                  error: true,
+                } as RemoteResult;
+              }
+            })
+          );
+
+          const formatted = results.map((r) =>
+            r.status === "fulfilled" ? r.value : r.reason
+          );
+          hasFailed ? reject(formatted) : resolve(formatted);
+        },
+      });
+
+      return execute;
+    },
+    {
+      nothrow: (...args: [TemplateStringsArray, ...any]) => {
+        const exec = this.remote(...args);
+        const { then: run } = exec;
+        exec.then = (f) =>
+          new Promise<any>(async (res) => {
+            await run(res, res);
+          }).then(f);
+
+        return exec;
+      },
+    }
+  );
+
+  async copyToRemote(
+    local: string,
+    remote: string,
+    options?: { ignores?: string[]; rsync: string | string[] }
+  ) {
+    return await this.pool.copyToRemote(local, remote, options);
   }
 
-  async remote(command: string);
-  async remote(template: TemplateStringsArray, ...subs: any);
-  async remote(
-    tpl: string | TemplateStringsArray,
-    ...subs: any[]
-  ): Promise<RemoteResult[]> {
-    const cmd = Array.isArray(tpl)
-      ? String.raw(tpl as TemplateStringsArray, ...subs)
-      : tpl;
-
-    const results = await Promise.allSettled(
-      this.pool.connections.map(async (con) => {
-        try {
-          const result = await con.run(`${this.prefix}: ""} ${cmd}`, {
-            cwd: this.cwd,
-          });
-          return {
-            remote: con.remote,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            code: result.code ?? 0,
-            cmd: result.child.spawnargs,
-            error: false,
-          } as RemoteResult;
-        } catch (e) {
-          return {
-            remote: con.remote,
-            stdout: e.stdout,
-            stderr: e.stderr,
-            code: e.code,
-            cmd: e.cmd,
-            error: true,
-          } as RemoteResult;
-        }
-      })
-    );
-
-    return results.map((r) => (r.status === "fulfilled" ? r.value : r.reason));
+  async copyFromRemote(
+    remotePath: string,
+    localPath: string,
+    options?: { ignores?: string[]; rsync: string | string[] }
+  ) {
+    return await this.pool.copyFromRemote(remotePath, localPath, options);
   }
 
-  async cd(path: string) {
-    this.cwd = path;
-    // await this.pool.run(`cd ${path}`);
+  /** set current directory for remotes */
+  async remoteCd(path: string) {
+    this.remoteCwd = path;
   }
 }

@@ -1,22 +1,28 @@
-export const on = <Events extends { [name: string]: any[] }>(
-  keys: Array<keyof Events>
-): { _emit: <K extends keyof Events>(k: K, ...arg: Events[K]) => void } & {
+export const on = <Events extends { [name: string]: any[] }>(): {
+  _emit: <K extends keyof Events>(k: K, ...arg: Events[K]) => Promise<void>;
+} & {
   [K in keyof Events]: (cb: (...args: Events[K]) => void) => void;
 } => {
-  const events = Object.create(null);
+  const events: {
+    [name in keyof Events]: Array<(...args: Events[keyof Events]) => void>;
+  } = Object.create(null);
 
-  return {
-    _emit: <T extends keyof Events>(event: T, ...args: Events[T]) => {
-      events[event].forEach((cb) => cb(...args));
-    },
-    ...keys.reduce(
-      (m, k) =>
-        Object.assign(m, {
-          [k]: (cb) => {
-            (events[k] ??= []).push(cb);
-          },
-        }),
-      Object.create(null)
-    ),
+  const emit = async <T extends keyof Events>(event: T, ...args: Events[T]) => {
+    return await Promise.all(
+      (events[event] ?? []).map(async (cb) => (await cb(...args)) as any)
+    );
   };
+
+  return new Proxy(Object.create(null), {
+    get(target, p) {
+      if (p === "_emit") return emit;
+
+      return (cb: any) => {
+        (events[p as keyof Events] ??= []).push(cb);
+      };
+    },
+    set() {
+      return false;
+    },
+  });
 };
