@@ -1,4 +1,5 @@
 import ora from "ora";
+import chalk from "chalk";
 
 // SEE: https://github.com/google/zx/blob/main/index.mjs#L316
 export const quote = (str: string) => {
@@ -49,8 +50,17 @@ export const cloudSpin = [
   "🌨 ",
 ];
 
+export const badge = chalk.bold.rgb(255, 255, 255).bgRgb(0, 200, 220)`[Rowen]`;
+
+export const errorBadge = chalk.bold
+  .rgb(255, 255, 255)
+  .bgRgb(230, 40, 40)`[Rowen]`;
+
 export const spin = (opt: ora.Options & { persistText?: string }) => {
-  const o = ora(opt);
+  const o = ora({
+    ...opt,
+    text: opt.text ? `${badge} ${opt.text}` : undefined,
+  });
   return async <T extends (...args: any[]) => Promise<any>>(
     fn: T
   ): Promise<ReturnType<T>> => {

@@ -1,21 +1,26 @@
-import { posix } from "path/posix";
+import { posix } from "path";
 import { ConnectionPool } from "ssh-pool";
-import { DirectoryResult } from "tmp-promise";
+import dayjs from "dayjs";
 import { on } from "./events";
 import { Log } from "./log";
 import { Remote } from "./remote";
 import { cleanUpTask } from "./tasks/cleanup";
 import { fetchTask } from "./tasks/fetch";
-import { DeployEnvOption, RowenConfig, RowenEvents } from "./types";
+import {
+  CommonOption,
+  DeployEnvOption,
+  RowenConfig,
+  RowenEvents,
+} from "./types";
 import { clockSpin, spin } from "./utils";
 
 export default class Rowen {
   static async init({
-    env,
+    env = null,
     verbose = false,
   }: {
-    env: string;
-    verbose: boolean;
+    env?: string | null;
+    verbose?: boolean;
   }) {
     const instance = new Rowen();
     instance.options = {
@@ -24,49 +29,60 @@ export default class Rowen {
     instance.log = new Log(verbose ? "verb" : null);
 
     const fn = require(posix.join(process.cwd(), "rowen.config"));
-    const options: RowenConfig = fn.default(instance);
-    const envOption = options.envs[env];
-
-    if (!envOption) {
-      throw new Error(`Environment ${env} not defined in rowen.config`);
-    }
+    const options: RowenConfig = await fn.default(instance);
 
     instance.env = env;
-    instance.rowenConfig = options;
-    instance.pool = new ConnectionPool(envOption.servers, {
-      log: verbose ? console.log : null,
-    });
-    instance.$ = new Remote(instance.pool);
+    instance._deployConfig = options;
+
+    instance.$ = new Remote(instance._pool);
 
     return instance;
   }
 
-  private env: string = "";
-  private rowenConfig: RowenConfig;
-  private pool: any;
+  private _deployConfig: RowenConfig = null as any;
+  private _pool: any;
+
+  public options: { verbose: boolean } = { verbose: false };
+  public env: string | null = null;
+  public ctx: { workspace: string | null; releaseId: string | null } = {
+    workspace: null,
+    releaseId: null,
+  };
 
   public $: Remote = null as any;
   public on = on<RowenEvents>();
   public log: Log = null as any;
-  public options: { verbose: boolean } = { verbose: false };
-  public ctx: { workspace: DirectoryResult | null } = { workspace: null };
 
   private constructor() {}
 
-  public get envOption(): DeployEnvOption {
+  public get deployConfig(): RowenConfig {
+    return this._deployConfig;
+  }
+
+  public get envConfig(): DeployEnvOption & CommonOption {
+    if (!this.env)
+      throw new Error("Failed to get envOption (environment not set)");
+
+    if (!this.deployConfig.envs[this.env])
+      throw new Error(`Environment ${this.env} not defined in rowen.config`);
+
     return Object.assign(
       Object.create(null),
-      this.rowenConfig.default,
-      this.rowenConfig.envs[this.env]
+      this.deployConfig.default,
+      this.deployConfig.envs[this.env]
     );
   }
 
   public get remotes() {
-    return this.envOption.servers;
+    return this.envConfig.servers;
+  }
+
+  public get envs() {
+    return Object.keys(this.deployConfig.envs);
   }
 
   public emit<K extends keyof RowenEvents>(event: K, ...args: RowenEvents[K]) {
-    spin({
+    return spin({
       spinner: { frames: clockSpin },
       text: `Starting \`${event}\` event`,
     })(async () => {
@@ -74,24 +90,44 @@ export default class Rowen {
     });
   }
 
+  public async deploy({ env }: { env: string }) {
+    this.env = env;
+
+    this.ctx.releaseId = dayjs().format("YYYYMMDD-HHmmss-SSS");
+    this._pool ??= new ConnectionPool(this.envConfig.servers, {
+      log: this.options.verbose ? console.log : null,
+    });
+
+    this.$ = new Remote(this._pool);
+
+    this.log.log(`Starting deploy to ${env}`);
+
+    try {
+      await this.steps.fetchAndBuild();
+      await this.steps.build();
+      await this.steps.deploy();
+    } catch (e) {
+      if (e instanceof AggregateError) {
+        this.log.error(`Failed to deploy. Caught error `, e.errors);
+      } else {
+        this.log.error(`Failed to deploy. Caught error `, e);
+      }
+    }
+  }
+
   public readonly steps = {
     fetchAndBuild: async () => {
       await fetchTask(this);
-
-      this.log.log("Starting `fetched` events");
-      await this.on._emit("fetched", this.$);
+      this.emit("fetched", this.$);
     },
-    // build: async () => {
-    //   this.log.log("Starting `fetched` events");
-    //   await this.on._emit("");
-    // },
+    build: async () => {
+      await this.emit("buildStep", this.$);
+    },
     deploy: async () => {
-      try {
-        this.on._emit("deploy");
-        await cleanUpTask(this);
-      } catch (e) {
-        this.log.error(`Failed to deploy. Caught error `, e);
-      }
+      await this.emit("deployStep", this.$);
+      await this.emit("afterDeploy", this.$);
+
+      await cleanUpTask(this);
     },
   };
 }

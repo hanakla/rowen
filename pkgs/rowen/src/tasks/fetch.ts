@@ -1,40 +1,40 @@
 import { Remote } from "../remote";
 import Rowen from "../Rowen";
 import tmp from "tmp-promise";
-// import spinners from "cli-spinners";
-import ora from "ora";
+import mkdirp from "mkdirp";
 import { cloudSpin, spin } from "../utils";
 
 export const fetchTask = async (rowen: Rowen) => {
-  const { $, options } = rowen;
+  const { $, envConfig: envOption } = rowen;
 
-  if (options.verbose) {
-    console.log("[Rowen] Starting fetching repository to workspace...");
-  }
+  rowen.log.log("fetch: Fetching repository to workspace...");
 
   // create workspace
+  const workspace = await (rowen.envConfig.workspace
+    ? mkdirp(rowen.envConfig.workspace, { mode: 0o755 })
+    : (
+        await tmp.dir({
+          mode: 0o755,
+          prefix: "rowen-",
+          unsafeCleanup: true,
+        })
+      ).path);
 
-  const workspace = await tmp.dir({
-    mode: "0755",
-    prefix: "rowen-",
-    unsafeCleanup: true,
-  });
-  rowen.ctx.workspace = workspace;
-
-  if (options.verbose) {
-    console.log(`[Rowen] workspace created in ${workspace.path}`);
-  }
+  rowen.ctx.workspace = workspace!;
+  rowen.log.log(`fetch: workspace created in ${workspace}`);
 
   const a = await spin({
     spinner: { frames: cloudSpin },
-    text: `[Rowen] fetching repository from ${rowen.envOption.repository!}`,
+    text: `fetch: fetching repository from ${envOption.repository!}`,
   })(async () =>
-    $.local`git clone --depth=1 ${rowen.envOption.repository!}`({
-      cwd: workspace.path,
+    $.local.nothrow`git clone --depth=1 ${envOption.repository!} ${rowen.ctx
+      .workspace!}`({
+      cwd: workspace,
     })
   );
 
   if (a.error) {
-    console.error("[Rowen] Failed to fetch repository", a);
+    rowen.log.error("fetch: Failed to fetch repository", a);
+    throw new Error("fetch: Failed to fetch repository");
   }
 };

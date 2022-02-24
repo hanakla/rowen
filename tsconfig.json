@@ -5,6 +5,7 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "moduleResolution": "Node",
-    "target": "ES2015"
+    "target": "ES2018",
+    "lib": ["ES2019", "ES2020", "ES2021"]
   }
 }

@@ -2,6 +2,8 @@ import { exec, ExecOptions } from "child_process";
 import { RemoteResult } from "./types";
 import streamToString from "stream-to-string";
 import { quote } from "./utils";
+import { processError } from "./errors";
+import { boolean } from "yargs";
 
 type LocalExecuter = {
   (options: ExecOptions): LocalExecuter;
@@ -12,7 +14,11 @@ type LocalExecuter = {
 };
 
 type RemoteExecuter = {
-  (options: { cwd?: string }): RemoteExecuter;
+  (options: {
+    cwd?: string;
+    env?: Record<string, string>;
+    tty?: boolean;
+  }): RemoteExecuter;
   then<T1, T2>(
     fullfiled: (v: RemoteResult[]) => T1 | PromiseLike<T1>,
     rejected: (e: RemoteResult[]) => T2 | PromiseLike<T2>
@@ -46,16 +52,17 @@ export class Remote {
             const errStream = streamToString(proc.stderr!);
 
             proc.on("error", async (err) => {
-              console.log(err);
-              reject({
-                code: proc.exitCode,
-                error: proc.exitCode !== 0,
-                stdout: await outStream,
-                stderr: await errStream,
-                cmd,
-                cwd: _opt.cwd ?? process.cwd(),
-                remote: null as any,
-              } as RemoteResult);
+              reject(
+                processError("Failed to execute local command", {
+                  code: proc.exitCode,
+                  error: proc.exitCode !== 0,
+                  stdout: await outStream,
+                  stderr: await errStream,
+                  cmd,
+                  cwd: _opt.cwd ?? process.cwd(),
+                  remote: null as any,
+                } as RemoteResult)
+              );
             });
 
             proc.on("exit", async (code, sig) => {
@@ -92,11 +99,15 @@ export class Remote {
   remote = Object.assign(
     (tpl: string | TemplateStringsArray, ...subs: any[]): RemoteExecuter => {
       const cmd = Array.isArray(tpl)
-        ? String.raw(tpl as TemplateStringsArray, ...subs)
+        ? String.raw(
+            tpl as TemplateStringsArray,
+            ...subs.map((str) => quote(str))
+          )
         : tpl;
 
-      let _opt = {};
-      const option = (opt: any) => {
+      let _opt: { cwd?: string; env?: Record<string, string>; tty?: boolean } =
+        {};
+      const option = (opt: typeof _opt) => {
         _opt = opt;
         return execute;
       };
@@ -110,8 +121,12 @@ export class Remote {
           const results = await Promise.allSettled(
             this.pool.connections.map(async (con: any) => {
               try {
+                const envs = Object.entries(_opt.env ?? {})
+                  .map(([key, value]) => `${key}=${quote(value)}`)
+                  .join(" ");
+
                 const result = await con.run(
-                  `${this.remotePrefix}: ""} ${cmd}`,
+                  `${this.remotePrefix} ${envs} ${cmd}`,
                   {
                     cwd: this.remoteCwd,
                     ..._opt,
@@ -128,14 +143,21 @@ export class Remote {
                 } as RemoteResult;
               } catch (e: any) {
                 hasFailed = true;
-                return {
-                  remote: con.remote,
-                  stdout: e.stdout,
-                  stderr: e.stderr,
-                  code: e.code,
-                  cmd: e.cmd,
-                  error: true,
-                } as RemoteResult;
+                const host = `${con.remote.user ? `${con.remote.user}@` : ""}${
+                  con.remote.host
+                }${con.remote.port ? `:${con.remote.port}` : ""}`;
+
+                return processError(
+                  `Failed to execute remote command on ${host}`,
+                  {
+                    remote: con.remote,
+                    stdout: e.stdout,
+                    stderr: e.stderr,
+                    code: e.code,
+                    cmd: e.cmd,
+                    error: true,
+                  } as RemoteResult
+                );
               }
             })
           );
@@ -143,7 +165,10 @@ export class Remote {
           const formatted = results.map((r) =>
             r.status === "fulfilled" ? r.value : r.reason
           );
-          hasFailed ? reject(formatted) : resolve(formatted);
+
+          hasFailed
+            ? reject(new (globalThis as any).AggregateError(formatted))
+            : resolve(formatted);
         },
       });
 

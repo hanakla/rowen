@@ -2,12 +2,12 @@ import Rowen from "rowen/src";
 import { Remote } from "rowen/src/remote";
 
 (async () => {
-  const rowen = await Rowen.init({ env: "sandbox", verbose: true });
+  const rowen = await Rowen.init({ verbose: true });
 
   rowen.on["fetched"](async ($) => {
     $.remotePrefix += `eval '$(nodenv init -)';`;
 
-    const a = await $.local`echo UNCHI_ENV=$UNCHI_ENV`({
+    const a = await $.local`hostname`({
       env: { UNCHI_ENV: "toilet" },
     });
 
@@ -20,11 +20,10 @@ import { Remote } from "rowen/src/remote";
   });
 
   rowen.on["built"](async ($) => {
-    $.copyToRemote($.workspace);
+    // $.copyToRemote($.workspace);
   });
 
-  await rowen.steps.fetchAndBuild();
-  await rowen.steps.deploy();
+  await rowen.deploy({ env: "sandbox" });
 })();
 
 declare module "rowen/src" {

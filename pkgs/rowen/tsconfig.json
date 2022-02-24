@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "./src"
+  },
+  "files": ["src/index.ts", "src/cli.ts"],
+  "include": ["src/types/*.d.ts"],
+  "exclude": ["src/**/*.spec.ts", "test_lib/"]
+}

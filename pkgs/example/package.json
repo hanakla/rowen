@@ -3,6 +3,15 @@
   "name": "rowen-example",
   "version": "0.0.0",
   "scripts": {
-    "start": "node -r \"esbuild-register\" ./deploy.ts"
+    "start": "node -r \"esbuild-register\" ./script-deploy.ts",
+    "deploy": "node -r \"esbuild-register\" ./node_modules/.bin/rowen deploy"
+  },
+  "devDependencies": {
+    "esbuild": "^0.14.23",
+    "esbuild-register": "^3.3.2",
+    "rowen": "*"
+  },
+  "dependencies": {
+    "chalk": "^5.0.0"
   }
 }
