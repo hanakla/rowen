@@ -1,7 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "./src"
+    "baseUrl": "./src",
+    "isolatedModules": true
   },
   "files": ["src/index.ts", "src/cli.ts"],
   "include": ["src/types/*.d.ts"],

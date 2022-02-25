@@ -1,9 +1,10 @@
 import { exec, ExecOptions } from "child_process";
-import { RemoteResult } from "./types";
+import { RemoteResult, RowenContexts } from "./types";
 import streamToString from "stream-to-string";
 import { quote } from "./utils";
 import { processError } from "./errors";
-import { boolean } from "yargs";
+import Rowen from "./Rowen";
+import { commonCtx } from "./commonCtx";
 
 type LocalExecuter = {
   (options: ExecOptions): LocalExecuter;
@@ -24,12 +25,37 @@ type RemoteExecuter = {
     rejected: (e: RemoteResult[]) => T2 | PromiseLike<T2>
   ): void;
 };
-export class Remote {
-  constructor(private pool: any) {}
+export class PilotLight {
+  constructor(private rowen: Rowen, private pool: any) {}
+
+  private localCwd: string | null = process.cwd();
+  private remoteCwd: string | null = null;
 
   /** command prefix for remotes (not local) */
   public remotePrefix: string = "set -euo pipefail;";
-  private remoteCwd: string | null = null;
+
+  public get workspace() {
+    return this.ctx(commonCtx);
+  }
+
+  public get envConfig() {
+    return this.rowen.envConfig;
+  }
+
+  public log(...args: any) {
+    console.log(...args);
+  }
+
+  public ctx = Object.assign(
+    <K extends keyof RowenContexts>(key: K): RowenContexts[K] => {
+      return this.rowen.ctx.get(key);
+    },
+    {
+      set: <K extends keyof RowenContexts>(k: K, v: RowenContexts[K]) => {
+        this.rowen.ctx.set(k, v);
+      },
+    }
+  );
 
   local = Object.assign(
     (template: TemplateStringsArray, ...subs: any[]): LocalExecuter => {
@@ -45,6 +71,7 @@ export class Remote {
           return new Promise<RemoteResult>((resolve, reject) => {
             const cmd = String.raw(template, ...subs.map((str) => quote(str)));
             const proc = exec(cmd, {
+              cwd: this.localCwd ?? undefined,
               ..._opt,
               env: { ...process.env, ..._opt.env },
             });
@@ -207,5 +234,9 @@ export class Remote {
   /** set current directory for remotes */
   async remoteCd(path: string) {
     this.remoteCwd = path;
+  }
+
+  async localCd(path: string) {
+    this.localCwd = path;
   }
 }

@@ -1,9 +1,8 @@
 import { posix } from "path";
 import { ConnectionPool } from "ssh-pool";
-import dayjs from "dayjs";
 import { on } from "./events";
 import { Log } from "./log";
-import { Remote } from "./remote";
+import { PilotLight } from "./PilotLight";
 import { cleanUpTask } from "./tasks/cleanup";
 import { fetchTask } from "./tasks/fetch";
 import {
@@ -13,8 +12,11 @@ import {
   RowenEvents,
 } from "./types";
 import { clockSpin, spin } from "./utils";
+import { commonCtx } from "./commonCtx";
 
 export default class Rowen {
+  static ctx: typeof commonCtx = commonCtx;
+
   static async init({
     env = null,
     verbose = false,
@@ -29,27 +31,23 @@ export default class Rowen {
     instance.log = new Log(verbose ? "verb" : null);
 
     const fn = require(posix.join(process.cwd(), "rowen.config"));
-    const options: RowenConfig = await fn.default(instance);
+    const options: RowenConfig = await fn.default();
 
     instance.env = env;
     instance._deployConfig = options;
-
-    instance.$ = new Remote(instance._pool);
 
     return instance;
   }
 
   private _deployConfig: RowenConfig = null as any;
-  private _pool: any;
+  private sshPool: any;
+  private $: PilotLight = null as any;
 
   public options: { verbose: boolean } = { verbose: false };
   public env: string | null = null;
-  public ctx: { workspace: string | null; releaseId: string | null } = {
-    workspace: null,
-    releaseId: null,
-  };
+  public branch: string | null = null;
+  public ctx: Map<symbol, any> = new Map();
 
-  public $: Remote = null as any;
   public on = on<RowenEvents>();
   public log: Log = null as any;
 
@@ -84,21 +82,38 @@ export default class Rowen {
   public emit<K extends keyof RowenEvents>(event: K, ...args: RowenEvents[K]) {
     return spin({
       spinner: { frames: clockSpin },
-      text: `Starting \`${event}\` event`,
+      silent: this.ctx.get(commonCtx)?.silent,
+      text: `Emit \`${event}\` event`,
+      completeTextFn: () => `Finish \`${event}\` events`,
     })(async () => {
       await this.on._emit(event, ...args);
     });
   }
 
-  public async deploy({ env }: { env: string }) {
+  public async deploy({
+    env,
+    branch,
+    silent,
+  }: {
+    env: string;
+    branch?: string;
+    silent?: boolean;
+  }) {
     this.env = env;
 
-    this.ctx.releaseId = dayjs().format("YYYYMMDD-HHmmss-SSS");
-    this._pool ??= new ConnectionPool(this.envConfig.servers, {
+    this.sshPool ??= new ConnectionPool(this.envConfig.servers, {
       log: this.options.verbose ? console.log : null,
     });
 
-    this.$ = new Remote(this._pool);
+    this.$ = new PilotLight(this, this.sshPool);
+    this.log.silent = !!silent;
+
+    this.ctx.set(commonCtx, {
+      env,
+      branch,
+      silent,
+      workspace: null,
+    });
 
     this.log.log(`Starting deploy to ${env}`);
 
@@ -117,8 +132,9 @@ export default class Rowen {
 
   public readonly steps = {
     fetchAndBuild: async () => {
-      await fetchTask(this);
-      this.emit("fetched", this.$);
+      await this.emit("beforeFetch", this.$);
+      await fetchTask(this, this.$);
+      await this.emit("afterFetch", this.$);
     },
     build: async () => {
       await this.emit("buildStep", this.$);

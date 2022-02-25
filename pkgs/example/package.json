@@ -9,7 +9,7 @@
   "devDependencies": {
     "esbuild": "^0.14.23",
     "esbuild-register": "^3.3.2",
-    "rowen": "*"
+    "@hanakla/rowen": "*"
   },
   "dependencies": {
     "chalk": "^5.0.0"

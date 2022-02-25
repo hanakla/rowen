@@ -1,11 +1,13 @@
-import { Remote } from "../remote";
 import Rowen from "../Rowen";
 import tmp from "tmp-promise";
 import mkdirp from "mkdirp";
 import { cloudSpin, spin } from "../utils";
+import { commonCtx } from "../commonCtx";
+import { PilotLight } from "../PilotLight";
 
-export const fetchTask = async (rowen: Rowen) => {
-  const { $, envConfig: envOption } = rowen;
+export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
+  const { envConfig: envOption } = rowen;
+  const ctx = $.ctx(commonCtx);
 
   rowen.log.log("fetch: Fetching repository to workspace...");
 
@@ -20,21 +22,25 @@ export const fetchTask = async (rowen: Rowen) => {
         })
       ).path);
 
-  rowen.ctx.workspace = workspace!;
+  ctx.workspace = workspace!;
   rowen.log.log(`fetch: workspace created in ${workspace}`);
 
-  const a = await spin({
+  const clone = await spin({
     spinner: { frames: cloudSpin },
-    text: `fetch: fetching repository from ${envOption.repository!}`,
+    silent: ctx.silent,
+    text: `fetch: fetching repository from ${envOption.repository!} branch ${
+      ctx.branch
+    }`,
   })(async () =>
-    $.local.nothrow`git clone --depth=1 ${envOption.repository!} ${rowen.ctx
-      .workspace!}`({
+    $.local.nothrow`git clone --depth=1 -b ${
+      ctx.branch
+    } ${envOption.repository!} ${ctx.workspace!}`({
       cwd: workspace,
     })
   );
 
-  if (a.error) {
-    rowen.log.error("fetch: Failed to fetch repository", a);
+  if (clone.error) {
+    rowen.log.error("fetch: Failed to fetch repository", clone);
     throw new Error("fetch: Failed to fetch repository");
   }
 };

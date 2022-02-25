@@ -3,17 +3,23 @@ import { badge, errorBadge } from "./utils";
 export class Log {
   constructor(private logLevel: "verb" | null = null) {}
 
+  public silent: boolean = false;
+
+  private b(b: string, args: any[]) {
+    return this.silent ? ["[Rowen]", ...args] : [b, ...args];
+  }
+
   verb(...args: any) {
     if (this.logLevel === "verb") {
-      console.log(badge, ...args);
+      console.log(...this.b(badge, args));
     }
   }
 
   log(...args: any) {
-    console.log(`🎈${badge}`, ...args);
+    console.log(...this.b(`🎈${badge}`, args));
   }
 
   error(...args: any) {
-    console.error(`👿${errorBadge}`, ...args);
+    console.error(...this.b(`👿${errorBadge}`, args));
   }
 }

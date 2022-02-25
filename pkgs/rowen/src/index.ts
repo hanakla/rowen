@@ -1,8 +1,7 @@
-import { Remote } from "./remote";
-
+/** Extend this interface if custom events you want */
 export interface ExtendedRowenEvents {}
+export interface ExtendedRowenContexts {}
 
-export { fetchTask as fetchTask } from "./tasks/fetch";
 export { type RowenConfig, type DeployEnvOption } from "./types";
 export { default } from "./Rowen";
-export { rowenReleases } from "./extend/releases";
+export { releases } from "./extend/releases";

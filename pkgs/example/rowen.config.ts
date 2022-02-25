@@ -1,6 +1,6 @@
-import Rowen, { RowenConfig, rowenReleases } from "rowen";
+import { RowenConfig, releases } from "@hanakla/rowen";
 
-export default (rowen: Rowen): RowenConfig => {
+export default async (): Promise<RowenConfig> => {
   return {
     default: {
       deployTo: "~/tmp/rowen-test/",
@@ -19,18 +19,19 @@ export default (rowen: Rowen): RowenConfig => {
       },
     },
     deploy: async (rowen) => {
-      rowenReleases(rowen, { sourcePathOnLocal: "" });
+      rowen.on.beforeFetch(releases.beforeFetch());
 
       rowen.on.buildStep(async ($) => {
         $.remotePrefix += `eval '$(nodenv init -)';`;
 
-        const a = await $.remote
-          .nothrow`node -e "console.log(process.env.UNCHI_ENV)"`({
+        const a = await $.local`node -e "console.log(process.env.UNCHI_ENV)"`({
           env: { UNCHI_ENV: "toilet" },
         });
+
+        console.log(a.stdout);
       });
 
-      rowen.on.deployStep(async ($) => {});
+      rowen.on.deployStep(releases.deployStep({ sourceDir: "./build" }));
 
       await rowen.deploy({ env: "sandbox" });
     },

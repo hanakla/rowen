@@ -1,12 +1,30 @@
-import { ExtendedRowenEvents } from "./index";
-import { Remote } from "./remote";
+import { commonCtx } from "./commonCtx";
+import { ExtendedRowenEvents, ExtendedRowenContexts } from "./index";
+import { PilotLight } from "./PilotLight";
 import Rowen from "./Rowen";
 
+export type DeploymentError = {
+  message: string;
+  detail: Error | AggregateError | RemoteResult;
+};
+
+export type RowenContexts = {
+  [commonCtx]: {
+    env: string;
+    branch: string;
+    workspace: string;
+    silent: boolean;
+  };
+} & ExtendedRowenContexts;
+
 export type RowenEvents = {
-  fetched: [Remote];
-  build: [Remote];
-  deploy: [Remote];
-  afterDeploy: [Remote];
+  /** Raised before fetch, workspace is not initialized */
+  beforeFetch: [PilotLight];
+  afterFetch: [PilotLight];
+  buildStep: [PilotLight];
+  deployStep: [PilotLight];
+  afterDeploy: [PilotLight];
+  caughtError: [DeploymentError];
   [name: string]: any;
 } & ExtendedRowenEvents;
 

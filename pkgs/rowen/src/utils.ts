@@ -50,28 +50,60 @@ export const cloudSpin = [
   "🌨 ",
 ];
 
+export const trackSpin = [
+  "        ",
+  "    🚚💨",
+  "   🚚💨 ",
+  "  🚚💨  ",
+  " 🚚💨   ",
+  "🚚💨    ",
+  "💨      ",
+  "       ",
+];
+
 export const badge = chalk.bold.rgb(255, 255, 255).bgRgb(0, 200, 220)`[Rowen]`;
 
 export const errorBadge = chalk.bold
   .rgb(255, 255, 255)
   .bgRgb(230, 40, 40)`[Rowen]`;
 
-export const spin = (opt: ora.Options & { persistText?: string }) => {
+export const spin = (
+  opt: ora.Options & {
+    persistText?: string;
+    silent: boolean;
+    completeTextFn?: () => string;
+  }
+) => {
   const o = ora({
     ...opt,
-    text: opt.text ? `${badge} ${opt.text}` : undefined,
+    text: opt.text
+      ? `${opt.silent ? "[Rowen]" : badge} ${opt.text}`
+      : undefined,
   });
+
+  const start = () => {
+    opt.silent ? console.log(o.text) : o.start();
+  };
+
+  const stop = ({ symbol }: { symbol: string }) => {
+    opt.silent
+      ? opt.completeTextFn
+        ? console.log("[Rowen]", opt.completeTextFn?.())
+        : null
+      : o.stopAndPersist({ symbol, text: opt.completeTextFn?.() });
+  };
+
   return async <T extends (...args: any[]) => Promise<any>>(
     fn: T
   ): Promise<ReturnType<T>> => {
-    o.start();
+    start();
 
     try {
       const result = await fn();
-      o.stopAndPersist({ symbol: "✅" });
+      stop({ symbol: "✅" });
       return result;
     } catch (e) {
-      o.stopAndPersist({ symbol: "❌" });
+      stop({ symbol: "❌" });
       throw e;
     }
   };

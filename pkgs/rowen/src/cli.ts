@@ -14,6 +14,11 @@ yargs(hideBin(process.argv))
         .positional("env", {
           describe: "Deploy target environment",
         })
+        .option("branch", {
+          alias: "b",
+          describe: "Deploying branch name",
+          type: "string",
+        })
         .option("silent", {
           alias: "s",
           describe: "Disable emoji and animations",
@@ -23,14 +28,26 @@ yargs(hideBin(process.argv))
     async (v) => {
       const rowen = await Rowen.init({ env: null });
 
-      const answers = await inquirer.prompt({
-        type: "list",
-        name: "env",
-        when: !v.env,
-        choices: rowen.envs, //?? rowen.envs,
-      });
+      const answers = await inquirer.prompt([
+        {
+          type: "list",
+          name: "env",
+          when: !v.env,
+          choices: rowen.envs, //?? rowen.envs,
+        },
+        {
+          type: "input",
+          name: "branch",
+          default: "main",
+          when: !v.branch,
+        },
+      ]);
 
-      rowen.deployConfig.deploy(rowen, { env: answers.env ?? v.env });
+      rowen.deploy({
+        env: answers.env ?? v.env,
+        branch: answers.branch ?? v.branch,
+        silent: v.silent,
+      });
       //   rowen.deploy({ env: answers.env ?? v.env });
     }
   )
