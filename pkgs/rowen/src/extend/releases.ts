@@ -1,6 +1,9 @@
 import Rowen from "../Rowen";
 
-export const rowenReleases = (rowen: Rowen, { sourcePathOnLocal }) => {
+export const rowenReleases = (
+  rowen: Rowen,
+  { sourcePathOnLocal }: { sourcePathOnLocal: string }
+) => {
   rowen.on.build(async ($) => {
     const releasePath = `./releases/${rowen.ctx.releaseId}`;
 

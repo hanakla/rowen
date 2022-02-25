@@ -1,6 +1,6 @@
 {
-  "name": "rowen",
-  "version": "1.0.0",
+  "name": "@hanakla/rowen",
+  "version": "0.0.0-beta.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.esm.js",

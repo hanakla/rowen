@@ -1,8 +1,6 @@
 import Rowen, { RowenConfig, rowenReleases } from "rowen";
 
 export default (rowen: Rowen): RowenConfig => {
-  //   rowenDeploy(rowen);
-
   return {
     default: {
       deployTo: "~/tmp/rowen-test/",
@@ -20,17 +18,16 @@ export default (rowen: Rowen): RowenConfig => {
         servers: [],
       },
     },
-    deploy: async (rowen, { env }) => {
-      rowenReleases(rowen);
+    deploy: async (rowen) => {
+      rowenReleases(rowen, { sourcePathOnLocal: "" });
 
       rowen.on.buildStep(async ($) => {
-        // $.remotePrefix += `eval '$(nodenv init -)';`;
+        $.remotePrefix += `eval '$(nodenv init -)';`;
 
-        const a = await $.remote`node -e "console.log(process.env.UNCHI_ENV)"`({
+        const a = await $.remote
+          .nothrow`node -e "console.log(process.env.UNCHI_ENV)"`({
           env: { UNCHI_ENV: "toilet" },
         });
-
-        console.log(a);
       });
 
       rowen.on.deployStep(async ($) => {});

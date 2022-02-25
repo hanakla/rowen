@@ -10,9 +10,15 @@ yargs(hideBin(process.argv))
     "deploy [env]",
     "starting deploy",
     (yargs) => {
-      return yargs.positional("env", {
-        describe: "Deploy target environment",
-      });
+      return yargs
+        .positional("env", {
+          describe: "Deploy target environment",
+        })
+        .option("silent", {
+          alias: "s",
+          describe: "Disable emoji and animations",
+          type: "boolean",
+        });
     },
     async (v) => {
       const rowen = await Rowen.init({ env: null });
