@@ -19,19 +19,19 @@ export default async (): Promise<RowenConfig> => {
       },
     },
     deploy: async (rowen) => {
-      rowen.on.beforeFetch(releases.beforeFetch());
+      // rowen.on.beforeFetch(releases.beforeFetch());
 
-      rowen.on.buildStep(async ($) => {
-        $.remotePrefix += `eval '$(nodenv init -)';`;
+      // rowen.on.buildStep(async ($) => {
+      //   $.remotePrefix += `eval '$(nodenv init -)';`;
 
-        const a = await $.local`node -e "console.log(process.env.UNCHI_ENV)"`({
-          env: { UNCHI_ENV: "toilet" },
-        });
+      //   const a = await $.local`node -e "console.log(process.env.UNCHI_ENV)"`({
+      //     env: { UNCHI_ENV: "toilet" },
+      //   });
 
-        console.log(a.stdout);
-      });
+      //   console.log(a.stdout);
+      // });
 
-      rowen.on.deployStep(releases.deployStep({ sourceDir: "./build" }));
+      // rowen.on.deployStep(releases.deployStep({ sourceDir: "./build" }));
 
       await rowen.deploy({ env: "sandbox" });
     },

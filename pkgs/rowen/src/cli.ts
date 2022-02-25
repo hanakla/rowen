@@ -48,7 +48,11 @@ yargs(hideBin(process.argv))
         branch: answers.branch ?? v.branch,
         silent: v.silent,
       });
-      //   rowen.deploy({ env: answers.env ?? v.env });
+
+      rowen.deployConfig.deploy(rowen, {
+        env: answers.env ?? v.env,
+        branch: answers.branch ?? v.branch,
+      });
     }
   )
   .strictCommands()

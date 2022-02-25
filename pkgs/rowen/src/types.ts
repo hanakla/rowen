@@ -45,7 +45,10 @@ export type DeployEnvOption = {
 export type RowenConfig = {
   default: CommonOption;
   envs: { [name: string]: DeployEnvOption };
-  deploy: (rowen: Rowen, options: { env: string }) => Promise<void>;
+  deploy: (
+    rowen: Rowen,
+    options: { env: string; branch: string }
+  ) => Promise<void>;
 };
 
 export type RemoteResult = {
