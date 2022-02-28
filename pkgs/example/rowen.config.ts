@@ -1,37 +1,53 @@
+import path from "path";
 import { RowenConfig, releases } from "@hanakla/rowen";
 
 export default async (): Promise<RowenConfig> => {
   return {
     default: {
-      deployTo: "~/tmp/rowen-test/",
+      deployTo: "/home/hanakla/rowen-test",
       repository: "git@github.com:hanakla/rowen.git",
       keepWorkspace: false,
     },
     envs: {
       sandbox: {
         servers: ["hanakla@localhost"],
+        ENV: {
+          NODE_ENV: "production",
+        },
       },
       staging: {
         servers: [],
+        ENV: {
+          NODE_ENV: "production",
+        },
       },
       production: {
         servers: [],
+        ENV: {
+          NODE_ENV: "production",
+        },
       },
     },
-    flows: async (rowen, options) => {
-      rowen.on.beforeFetch(releases.beforeFetch());
+    flows: async (rowen) => {
+      rowen.on.beforeFetch(
+        releases.beforeFetch({
+          sourceDir: "./pkgs/rowen",
+          keepReleases: 2,
+        })
+      );
 
       rowen.on.buildStep(async ($) => {
-        $.remotePrefix += `eval '$(nodenv init -)';`;
+        // $.remotePrefix += `eval '$(nodenv init -)';`;
+        $.localCd(path.join($.workspace, "pkgs/rowen"));
 
-        const a = await $.local`node -e "console.log(process.env.UNCHI_ENV)"`({
-          env: { UNCHI_ENV: "toilet" },
-        });
-
-        console.log(a.stdout);
+        await $.local`ls -a`;
+        await $.local`yarn install`;
+        await $.local`yarn build`;
       });
 
-      rowen.on.deployStep(releases.deployStep({ sourceDir: "./build" }));
+      rowen.on.syncStep(releases.syncStep());
+
+      rowen.on["releases:after"];
     },
   };
 };

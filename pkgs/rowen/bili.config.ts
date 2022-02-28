@@ -23,6 +23,7 @@ export default {
   },
   babel: { asyncToPromises: false },
   bundleNodeModules: ["tslib"],
+  externals: ["@hanakla/rowen"],
   output: {
     format: ["cjs", "esm"],
   },

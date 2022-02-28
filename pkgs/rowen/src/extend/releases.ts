@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { posix } from "path";
+import path from "path";
 import { commonCtx } from "../commonCtx";
 import { PilotLight } from "../PilotLight";
 import Rowen from "../Rowen";
@@ -12,65 +12,103 @@ declare module "../" {
       releaseId: string;
       releasePath: string;
       currentPath: string;
+      sourceDir: string;
+      sharedPath: string | null;
+      keepReleases: number;
+      releasesPath: string;
     };
   }
 }
 
-export const releaseCtx = Symbol();
+export const releaseCtx: unique symbol = Symbol();
 
 export const releases = {
-  ctx: releaseCtx,
-  beforeFetch: () => async ($: PilotLight) => {
-    const id = dayjs().format("YYYYMMDD-HHmmss-0SSS");
-    const releasePath = posix.join("./releases", id);
+  ctx: releaseCtx as typeof releaseCtx,
+  /** Setup `releases` context, it can be access by `$.ctx(releases.ctx)` */
+  beforeFetch: ({
+    sourceDir = ".",
+    keepReleases = 10,
+    releasesPath = "./releases",
+    enableShared = true,
+  }: {
+    /**
+     * Deploying source dir path from workspace path on local
+     *
+     * Default to "."
+     */
+    sourceDir?: string;
+    keepReleases?: number;
+    releasesPath?: string;
+    enableShared?: boolean;
+  }) => {
+    return async ($: PilotLight) => {
+      const id = dayjs().format("YYYYMMDD-HHmmss-0SSS");
+      const releasePath = path.join(releasesPath, id);
 
-    const ctx: RowenContexts[typeof releaseCtx] = {
-      releaseId: id,
-      releasePath,
-      currentPath: posix.join("./current"),
+      const ctx: RowenContexts[typeof releaseCtx] = {
+        sourceDir,
+        keepReleases,
+        releaseId: id,
+        releasePath,
+        sharedPath: enableShared ? "./shared" : null,
+        currentPath: path.join("./current"),
+        releasesPath,
+      };
+
+      $.log(`└ releases: release id: ${id}`);
+      $.ctx.set(releaseCtx, ctx);
     };
-
-    $.log(`releases: release id: ${id}`);
-    $.ctx.set(releaseCtx, ctx);
   },
-  deployStep:
-    ({
-      sourceDir = ".",
-    }: {
-      /**
-       * Deploying source dir path from workspace path on local
-       *
-       * Default to "."
-       */
-      sourceDir?: string;
-    }) =>
-    async ($: PilotLight) => {
+  /** Create release directory and copy local files into release, and cleanup old releases */
+  syncStep: () => {
+    return async ($: PilotLight) => {
       const { workspace } = $.ctx(Rowen.ctx);
-      const { releaseId, releasePath } = $.ctx(releaseCtx);
+      const { releaseId, releasePath, sourceDir, keepReleases, sharedPath } =
+        $.ctx(releaseCtx);
+      const deployTo = $.envConfig.deployTo!;
 
-      $.log(`deployStep(releases): Create remote release on ${releasePath}`);
+      $.log(
+        `└ deployStep(releases): Creating remote release on ${releasePath}...`
+      );
+
+      await $.remote`mkdir -p ${deployTo}`;
 
       await $.remote`mkdir -p ${releasePath}`({
-        cwd: $.envConfig.deployTo,
+        cwd: deployTo,
       });
+
+      $.log(`└ deployStep(releases): Creating shared on ./shared`);
+
+      if (sharedPath) {
+        await $.remote`mkdir -p ${sharedPath}`({
+          cwd: deployTo,
+        });
+      }
 
       await spin({
         spinner: {
           frames: trackSpin,
         },
-        text: "deployStep(releases): Copying files...",
+        text: "└ deployStep(releases): Copying files...",
         silent: $.ctx(commonCtx).silent,
-        completeTextFn: () => "deployStep(releases): Complete to copy file",
+        completeTextFn: () => "└ deployStep(releases): Complete to copy file",
       })(() => {
-        return $.copyToRemote(posix.join(workspace, sourceDir), releasePath);
+        return $.copyToRemote(path.join(workspace, sourceDir), releasePath);
       });
 
       await $.remote`ln -sf ${releasePath} ./current`({
-        cwd: $.envConfig.deployTo,
+        cwd: deployTo,
       });
 
-      await $.remote`cat ${releaseId} > ./CURRENT_RELEASE`({
-        cwd: $.envConfig.deployTo,
+      await $.remote`echo "${releaseId}" > ./CURRENT_RELEASE`({
+        cwd: deployTo,
       });
-    },
+
+      await $.remote`(ls -rd ./releases/*|head -n ${keepReleases}; ls -d ./releases/*)|sort|uniq -u|xargs rm -rf`(
+        {
+          cwd: deployTo,
+        }
+      );
+    };
+  },
 };

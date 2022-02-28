@@ -1,5 +1,9 @@
 import { commonCtx } from "./commonCtx";
-import { ExtendedRowenEvents, ExtendedRowenContexts } from "./index";
+import {
+  ExtendedRowenEvents,
+  ExtendedRowenContexts,
+  ExtraRowenConfig,
+} from "./index";
 import { PilotLight } from "./PilotLight";
 import Rowen from "./Rowen";
 
@@ -22,8 +26,8 @@ export type RowenEvents = {
   beforeFetch: [PilotLight];
   afterFetch: [PilotLight];
   buildStep: [PilotLight];
-  deployStep: [PilotLight];
-  afterDeploy: [PilotLight];
+  syncStep: [PilotLight];
+  afterSync: [PilotLight];
   caughtError: [DeploymentError];
   [name: string]: any;
 } & ExtendedRowenEvents;
@@ -45,7 +49,8 @@ export type DeployEnvOption = {
 export type RowenConfig = {
   default: CommonOption;
   envs: { [name: string]: DeployEnvOption };
-  flows: (
+  extra?: ExtraRowenConfig;
+  flows?: (
     rowen: Rowen,
     options: { env: string; branch: string }
   ) => Promise<void>;

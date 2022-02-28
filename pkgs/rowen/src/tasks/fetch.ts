@@ -23,12 +23,12 @@ export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
       ).path);
 
   ctx.workspace = workspace!;
-  rowen.log.log(`fetch: workspace created in ${workspace}`);
+  rowen.log.log(`└ fetch: workspace created in ${workspace}`);
 
   const clone = await spin({
     spinner: { frames: cloudSpin },
     silent: ctx.silent,
-    text: `fetch: fetching repository from ${envOption.repository!} branch ${
+    text: `└ fetch: fetching repository from ${envOption.repository!} branch ${
       ctx.branch
     }`,
   })(async () =>
@@ -40,7 +40,7 @@ export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
   );
 
   if (clone.error) {
-    rowen.log.error("fetch: Failed to fetch repository", clone);
+    rowen.log.error("└ fetch: Failed to fetch repository", clone);
     throw new Error("fetch: Failed to fetch repository");
   }
 };

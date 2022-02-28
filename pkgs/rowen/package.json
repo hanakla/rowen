@@ -14,10 +14,11 @@
   "scripts": {
     "prepublishOnly": "rm -rf ./dist && yarn build",
     "build": "rm -rf dist && run-p build:*",
-    "build:esm": "bili",
+    "build:esm": "tsc",
     "build:types": "tsc --emitDeclarationOnly --declaration --outDir ./dist",
     "watch": "rm -rf dist && run-p watch:*",
     "watch:esm": "bili --watch",
+    "watch:esm": "tsc --watch",
     "watch:types": "tsc --watch --emitDeclarationOnly --declaration --outDir ./dist"
   },
   "devDependencies": {

@@ -9,8 +9,7 @@ export const cleanUpTask = async (rowen: Rowen) => {
   await spin({
     spinner: { frames: ["💣", "🔥", "💥"] },
     silent: ctx.silent,
-    text: "Cleanup workspace",
-    completeTextFn: () => "deployStep(releases): Complete to copy file",
+    text: "└ Cleanup workspace",
   })(async () => {
     const ctx = rowen.ctx.get(commonCtx);
 

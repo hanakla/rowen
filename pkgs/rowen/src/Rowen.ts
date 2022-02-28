@@ -13,16 +13,17 @@ import {
 } from "./types";
 import { clockSpin, spin } from "./utils";
 import { commonCtx } from "./commonCtx";
+import { ExtraRowenConfig } from "./index";
 
 export default class Rowen {
   static ctx: typeof commonCtx = commonCtx;
 
   static async init({
-    env = null,
     verbose = false,
+    configFile = posix.join(process.cwd(), "rowen.config"),
   }: {
-    env?: string | null;
     verbose?: boolean;
+    configFile?: string;
   }) {
     const instance = new Rowen();
     instance.options = {
@@ -30,10 +31,9 @@ export default class Rowen {
     };
     instance.log = new Log(verbose ? "verb" : null);
 
-    const fn = require(posix.join(process.cwd(), "rowen.config"));
+    const fn = require(configFile);
     const options: RowenConfig = await fn.default();
 
-    instance.env = env;
     instance._deployConfig = options;
 
     return instance;
@@ -55,6 +55,10 @@ export default class Rowen {
 
   public get deployConfig(): RowenConfig {
     return this._deployConfig;
+  }
+
+  public get extraConfig(): ExtraRowenConfig {
+    return this.deployConfig.extra ?? {};
   }
 
   public get envConfig(): DeployEnvOption & CommonOption {
@@ -84,9 +88,27 @@ export default class Rowen {
       spinner: { frames: clockSpin },
       silent: this.ctx.get(commonCtx)?.silent,
       text: `Emit \`${event}\` event`,
-      completeTextFn: () => `Finish \`${event}\` events`,
+      completeTextFn: () => `└ Finish \`${event}\` events`,
     })(async () => {
       await this.on._emit(event, ...args);
+    });
+  }
+
+  public async rollback({ env, silent }: { env: string; silent?: boolean }) {
+    this.env = env;
+
+    this.sshPool ??= new ConnectionPool(this.envConfig.servers, {
+      log: this.options.verbose ? console.log : null,
+    });
+
+    this.$ = new PilotLight(this, this.sshPool);
+    this.log.silent = !!silent;
+
+    this.ctx.set(Rowen.ctx, {
+      env,
+      branch: null,
+      silent,
+      workspace: null,
     });
   }
 
@@ -118,7 +140,7 @@ export default class Rowen {
     this.log.log(`Starting deploy to ${env}`);
 
     try {
-      await this.steps.fetchAndBuild();
+      await this.steps.fetch();
       await this.steps.build();
       await this.steps.deploy();
     } catch (e) {
@@ -131,7 +153,7 @@ export default class Rowen {
   }
 
   public readonly steps = {
-    fetchAndBuild: async () => {
+    fetch: async () => {
       await this.emit("beforeFetch", this.$);
       await fetchTask(this, this.$);
       await this.emit("afterFetch", this.$);
@@ -140,8 +162,8 @@ export default class Rowen {
       await this.emit("buildStep", this.$);
     },
     deploy: async () => {
-      await this.emit("deployStep", this.$);
-      await this.emit("afterDeploy", this.$);
+      await this.emit("syncStep", this.$);
+      await this.emit("afterSync", this.$);
 
       await cleanUpTask(this);
     },

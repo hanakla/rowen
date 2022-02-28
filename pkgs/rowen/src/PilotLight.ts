@@ -25,6 +25,9 @@ type RemoteExecuter = {
     rejected: (e: RemoteResult[]) => T2 | PromiseLike<T2>
   ): void;
 };
+
+const TERM_NEWLINE = /\n$/mu;
+
 export class PilotLight {
   constructor(private rowen: Rowen, private pool: any) {}
 
@@ -35,7 +38,11 @@ export class PilotLight {
   public remotePrefix: string = "set -euo pipefail;";
 
   public get workspace() {
-    return this.ctx(commonCtx);
+    return this.ctx(commonCtx).workspace;
+  }
+
+  public get extra() {
+    return this.rowen.extraConfig;
   }
 
   public get envConfig() {
@@ -43,7 +50,7 @@ export class PilotLight {
   }
 
   public log(...args: any) {
-    console.log(...args);
+    console.log("[Rowen]", ...args);
   }
 
   public ctx = Object.assign(
@@ -83,8 +90,8 @@ export class PilotLight {
                 processError("Failed to execute local command", {
                   code: proc.exitCode,
                   error: proc.exitCode !== 0,
-                  stdout: await outStream,
-                  stderr: await errStream,
+                  stdout: (await outStream).replace(TERM_NEWLINE, ""),
+                  stderr: (await errStream).replace(TERM_NEWLINE, ""),
                   cmd,
                   cwd: _opt.cwd ?? process.cwd(),
                   remote: null as any,
@@ -96,8 +103,8 @@ export class PilotLight {
               (code === 0 ? resolve : reject)({
                 code,
                 error: code !== 0,
-                stdout: await outStream,
-                stderr: await errStream,
+                stdout: (await outStream).replace(TERM_NEWLINE, ""),
+                stderr: (await errStream).replace(TERM_NEWLINE, ""),
                 cmd,
                 cwd: _opt.cwd ?? process.cwd(),
                 remote: null as any,
@@ -141,67 +148,72 @@ export class PilotLight {
 
       const execute: RemoteExecuter = Object.assign(option, {
         then: async (
-          resolve: (v: RemoteResult[]) => void,
-          reject: (e: RemoteResult[]) => void
+          fullfiled: (v: RemoteResult[]) => void,
+          rejected: (e: RemoteResult[]) => void
         ) => {
-          let hasFailed = false;
-          const results = await Promise.allSettled(
-            this.pool.connections.map(async (con: any) => {
-              try {
-                const envs = Object.entries(_opt.env ?? {})
-                  .map(([key, value]) => `${key}=${quote(value)}`)
-                  .join(" ");
+          return new Promise<RemoteResult[]>(async (resolve, reject) => {
+            let hasFailed = false;
+            const results = await Promise.allSettled(
+              this.pool.connections.map(async (con: any) => {
+                try {
+                  const envs = Object.entries(_opt.env ?? {})
+                    .map(([key, value]) => `${key}=${quote(value)}`)
+                    .join(" ");
 
-                const result = await con.run(
-                  `${this.remotePrefix} ${envs} ${cmd}`,
-                  {
-                    cwd: this.remoteCwd,
-                    ..._opt,
-                  }
-                );
+                  const result = await con.run(
+                    `${this.remotePrefix} ${envs} ${cmd}`,
+                    {
+                      ...(this.remoteCwd ? { cwd: this.remoteCwd } : {}),
+                      ..._opt,
+                    }
+                  );
 
-                return {
-                  remote: con.remote,
-                  stdout: result.stdout,
-                  stderr: result.stderr,
-                  code: result.code ?? 0,
-                  cmd: result.child.spawnargs,
-                  error: false,
-                } as RemoteResult;
-              } catch (e: any) {
-                hasFailed = true;
-                const host = `${con.remote.user ? `${con.remote.user}@` : ""}${
-                  con.remote.host
-                }${con.remote.port ? `:${con.remote.port}` : ""}`;
-
-                return processError(
-                  `Failed to execute remote command on ${host}`,
-                  {
+                  return {
                     remote: con.remote,
-                    stdout: e.stdout,
-                    stderr: e.stderr,
-                    code: e.code,
-                    cmd: e.cmd,
-                    error: true,
-                  } as RemoteResult
-                );
-              }
-            })
-          );
+                    stdout: result.stdout.replace(TERM_NEWLINE, ""),
+                    stderr: result.stderr.replace(TERM_NEWLINE, ""),
+                    code: result.code ?? 0,
+                    cmd: result.child.spawnargs,
+                    error: false,
+                  } as RemoteResult;
+                } catch (e: any) {
+                  hasFailed = true;
+                  const host = `${
+                    con.remote.user ? `${con.remote.user}@` : ""
+                  }${con.remote.host}${
+                    con.remote.port ? `:${con.remote.port}` : ""
+                  }`;
 
-          const formatted = results.map((r) =>
-            r.status === "fulfilled" ? r.value : r.reason
-          );
+                  return processError(
+                    `Failed to execute remote command on ${host}`,
+                    {
+                      remote: con.remote,
+                      stdout: e.stdout.replace(TERM_NEWLINE, ""),
+                      stderr: e.stderr.replace(TERM_NEWLINE, ""),
+                      code: e.code,
+                      cmd: e.cmd,
+                      error: true,
+                    } as RemoteResult
+                  );
+                }
+              })
+            );
 
-          hasFailed
-            ? reject(new (globalThis as any).AggregateError(formatted))
-            : resolve(formatted);
+            const formatted = results.map((r) =>
+              r.status === "fulfilled" ? r.value : r.reason
+            );
+
+            hasFailed
+              ? reject(new (globalThis as any).AggregateError(formatted))
+              : resolve(formatted);
+          }).then(fullfiled, rejected);
         },
       });
 
       return execute;
     },
     {
+      // pipe: (...args) => {},
       nothrow: (...args: [TemplateStringsArray, ...any]) => {
         const exec = this.remote(...args);
         const { then: run } = exec;
