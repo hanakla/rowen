@@ -108,7 +108,7 @@ export default class Rowen {
     this.$ = new PilotLight(this, this.sshPool);
     this.log.silent = !!silent;
 
-    this.ctx.set(commonCtx, {
+    this.ctx.set(Rowen.ctx, {
       env,
       branch,
       silent,

@@ -45,7 +45,7 @@ export type DeployEnvOption = {
 export type RowenConfig = {
   default: CommonOption;
   envs: { [name: string]: DeployEnvOption };
-  deploy: (
+  flows: (
     rowen: Rowen,
     options: { env: string; branch: string }
   ) => Promise<void>;

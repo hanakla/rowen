@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import inquirer from "inquirer";
-import yargs, { choices } from "yargs";
+import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import Rowen from "./index";
 
@@ -43,15 +43,15 @@ yargs(hideBin(process.argv))
         },
       ]);
 
-      rowen.deploy({
+      await rowen.deployConfig.flows(rowen, {
+        env: answers.env ?? v.env,
+        branch: answers.branch ?? v.branch,
+      });
+
+      await rowen.deploy({
         env: answers.env ?? v.env,
         branch: answers.branch ?? v.branch,
         silent: v.silent,
-      });
-
-      rowen.deployConfig.deploy(rowen, {
-        env: answers.env ?? v.env,
-        branch: answers.branch ?? v.branch,
       });
     }
   )

@@ -23,7 +23,6 @@ export default {
   },
   babel: { asyncToPromises: false },
   bundleNodeModules: ["tslib"],
-  externals: ["rowen"],
   output: {
     format: ["cjs", "esm"],
   },

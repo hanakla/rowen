@@ -8,10 +8,10 @@
   },
   "devDependencies": {
     "esbuild": "^0.14.23",
-    "esbuild-register": "^3.3.2",
-    "@hanakla/rowen": "*"
+    "esbuild-register": "^3.3.2"
   },
   "dependencies": {
+    "@hanakla/rowen": "*",
     "chalk": "^5.0.0"
   }
 }
