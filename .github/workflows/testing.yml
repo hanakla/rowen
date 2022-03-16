@@ -46,7 +46,7 @@ jobs:
 
       - name: Testing rowen
         run: |
-          cd packages/testings
+          cd pkgs/testings
           yarn test
 
   # build-lint:
@@ -81,11 +81,11 @@ jobs:
   #     - name: Build package
   #       if: ${{ matrix.steps == 'build' }}
   #       run: |
-  #         cd packages/lys
+  #         cd pkgs/lys
   #         yarn prepublishOnly
 
   #     - name: Linting @fleur/lys
   #       if: ${{ matrix.steps == 'lint' }}
   #       run: |
-  #         cd packages/lys
+  #         cd pkgs/lys
   #         yarn eslint ./src
