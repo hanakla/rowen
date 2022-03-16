@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "rowen-testings",
+  "version": "0.0.0",
+  "dependencies": {
+    "@hanakla/rowen": "*"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.2.155",
+    "@swc/jest": "^0.2.20",
+    "@types/jest": "^27.4.1",
+    "jest": "^27.5.1"
+  }
+}
