@@ -17,8 +17,8 @@ export type RowenContexts = {
     silent: boolean;
   } & {
     mode: "deploy";
-    branch: string | null;
-    workspace: string | null;
+    deployGitRef: string;
+    workspace: string;
   };
   // | {
   //     mode: "rollback";
@@ -45,8 +45,8 @@ export type CommonOption = {
 };
 
 export type DeployEnvOption = {
-  deployTo?: string;
   servers: string[];
+  deployTo?: string;
   workspace?: string;
   ENV?: Record<string, string>;
 };

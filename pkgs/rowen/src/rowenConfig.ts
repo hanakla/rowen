@@ -1,4 +1,7 @@
 import { RowenConfig } from "./types";
-import Rowen from "./Rowen";
 
-export const rowenConfig = (config: (r: Rowen) => RowenConfig) => config;
+type RowenConfigFn =
+  | ((config: (rowen: RowenConfig) => void) => RowenConfig)
+  | ((config: (rowen: Promise<RowenConfig>) => void) => Promise<RowenConfig>);
+
+export const rowenConfig: RowenConfigFn = (config: any) => config();

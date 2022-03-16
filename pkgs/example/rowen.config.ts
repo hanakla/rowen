@@ -1,7 +1,7 @@
 import path from "path";
 import { presets, rowenConfig } from "@hanakla/rowen";
 
-export default rowenConfig((): Promise<RowenConfig> => {
+export default rowenConfig(async (): Promise<RowenConfig> => {
   return {
     default: {
       deployTo: "/home/hanakla/rowen-test",

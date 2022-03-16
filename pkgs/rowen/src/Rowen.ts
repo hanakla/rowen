@@ -19,6 +19,11 @@ import { ExtraRowenConfig } from "./index";
 export default class Rowen {
   static ctx: typeof commonCtx = commonCtx;
 
+  static async loadFile(path: string) {
+    const fn = require(path);
+    return (await fn.default()) as RowenConfig;
+  }
+
   static async init({
     verbose = false,
     configFile = posix.join(process.cwd(), "rowen.config"),
@@ -32,12 +37,36 @@ export default class Rowen {
     };
     instance.log = new Log(verbose ? "verb" : null);
 
-    const fn = require(configFile);
-    const options: RowenConfig = await fn.default();
-
+    const options = await this.loadFile(configFile);
     instance._deployConfig = options;
 
     return instance;
+  }
+
+  static async script(
+    {
+      env,
+      verbose = false,
+      configFile = posix.join(process.cwd(), "rowen.config"),
+    }: {
+      env: string;
+      verbose?: boolean;
+      configFile?: string;
+    },
+    proc: ($: PilotLight, rowen: Rowen) => Promise<void> | void
+  ) {
+    const instance = await this.init({ configFile, verbose });
+
+    instance.env = env;
+    instance.log.silent = !verbose;
+    instance.sshPool ??= new ConnectionPool(instance.envConfig.servers, {
+      log: instance.options.verbose ? console.log : null,
+    });
+
+    instance.$ = new PilotLight(instance, instance.sshPool);
+    instance.$.localCd(process.cwd());
+
+    await proc(instance.$, instance);
   }
 
   private _deployConfig: RowenConfig = null as any;
@@ -138,9 +167,9 @@ export default class Rowen {
     this.ctx.set(Rowen.ctx, {
       mode: "deploy",
       // env,
-      branch,
+      deployGitRef: branch,
       silent,
-      workspace: null,
+      workspace: null!,
     });
 
     this.log.log(`Starting deploy to ${env}`);

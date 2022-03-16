@@ -44,10 +44,10 @@ jobs:
           sudo systemctl restart ssh
           ssh localhost "uname"
 
-      # - name: Testing @fluer/lys
-      #   run: |
-      #     cd packages/lys
-      #     yarn test --coverage --verbose
+      - name: Testing rowen
+        run: |
+          cd packages/testings
+          yarn test
 
   # build-lint:
   #   strategy:

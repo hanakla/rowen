@@ -29,12 +29,12 @@ export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
   const clone = await spin({
     spinner: { frames: cloudSpin },
     silent: ctx.silent,
-    text: `└ fetch: fetching repository from ${envOption.repository!} branch ${
-      ctx.branch
+    text: `└ fetch: fetching repository from ${envOption.repository!} ref ${
+      ctx.deployGitRef
     }`,
   })(async () =>
     $.local.nothrow`git clone --depth=1 -b ${
-      ctx.branch
+      ctx.deployGitRef
     } ${envOption.repository!} ${ctx.workspace!}`({
       cwd: workspace,
     })
