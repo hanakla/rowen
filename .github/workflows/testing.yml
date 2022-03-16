@@ -43,6 +43,7 @@ jobs:
           echo "NoHostAuthenticationForLocalhost yes" >> ~/.ssh/config
           sudo systemctl restart ssh
           ssh localhost "uname"
+          whoami
 
       - name: Building
         run: |

@@ -28,7 +28,7 @@ describe("main", () => {
         await $.remote`echo 'hi'`;
       });
     } catch (e) {
-      console.dir(e);
+      console.dir((e as any).message, (e as any).errors);
       throw e;
     }
 
