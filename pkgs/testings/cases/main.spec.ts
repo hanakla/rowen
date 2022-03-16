@@ -23,9 +23,14 @@ describe("main", () => {
       .spyOn(Rowen, "loadFile")
       .mockImplementation(async () => baseConfig);
 
-    await Rowen.script({ env: "production" }, async ($) => {
-      await $.remote`echo 'hi'`;
-    });
+    try {
+      await Rowen.script({ env: "production" }, async ($) => {
+        await $.remote`echo 'hi'`;
+      });
+    } catch (e) {
+      console.dir(e);
+      throw e;
+    }
 
     mock.mockClear();
   });
