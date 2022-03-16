@@ -19,13 +19,11 @@ describe("main", () => {
 
     // Rowen.init({ configFile })
 
-    const mock = jest
-      .spyOn(Rowen, "loadFile")
-      .mockImplementation(async () => baseConfig);
+    const mock = jest.spyOn(Rowen, "loadFile").mockImplementation(baseConfig);
 
     try {
       await Rowen.script({ env: "production" }, async ($) => {
-        await $.remote`echo 'hi'`;
+        console.log(await $.remote`echo 'hi'`);
       });
     } catch (e) {
       console.dir((e as any).message);
