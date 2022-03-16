@@ -44,6 +44,10 @@ jobs:
           sudo systemctl restart ssh
           ssh localhost "uname"
 
+      - name: Building
+        run: |
+          yarn build
+
       - name: Testing rowen
         run: |
           cd pkgs/testings
