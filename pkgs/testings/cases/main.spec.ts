@@ -9,7 +9,7 @@ describe("main", () => {
       },
       envs: {
         production: {
-          servers: ["runner@localhost"],
+          servers: ["runner@localhost", "runner@localhost"],
         },
       },
       flows: (rowen) => {
