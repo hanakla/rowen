@@ -4,7 +4,7 @@ describe("releases", () => {
   it("presets.releases test", async () => {
     const config = rowenConfig(() => ({
       default: {
-        repository: "git@github.com:hanakla/rowen.git",
+        repository: `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}@github.com/hanakla/rowen`,
         deployTo: "rowen-tests",
       },
       envs: {
