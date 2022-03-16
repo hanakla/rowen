@@ -1,0 +1,91 @@
+name: CI
+
+on: [push]
+
+jobs:
+  testing:
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x, 14.x, 15.x]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache
+        uses: actions/cache@v1.0.0
+        with:
+          path: ~/.cache/yarn
+          key: ${{ matrix.os }}-${{ hashFiles(format('{0}{1}', github.workspace, '/yarn.lock')) }}
+          restore-keys: |
+            ${{ matrix.os }}-
+
+      - name: Install deps
+        run: yarn install
+
+      - name: Install SSH server
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install openssh-server
+          sudo systemctl enable ssh
+          sudo systemctl start ssh
+          mkdir -p "$HOME/.ssh"
+          chmod 0700 "$HOME/.ssh"
+          ssh-keygen -t rsa -q -f "$HOME/.ssh/id_rsa" -N ""
+          cat "$HOME/.ssh/id_rsa.pub" >> "$HOME/.ssh/authorized_keys"
+          chmod 640 "$HOME/.ssh/authorized_keys"
+          echo "NoHostAuthenticationForLocalhost yes" >> ~/.ssh/config
+          sudo systemctl restart ssh
+          ssh localhost "uname"
+
+      # - name: Testing @fluer/lys
+      #   run: |
+      #     cd packages/lys
+      #     yarn test --coverage --verbose
+
+  build-lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [15.x]
+        steps: [build, lint]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache
+        uses: actions/cache@v1.0.0
+        with:
+          path: ~/.cache/yarn
+          key: ${{ matrix.os }}-${{ hashFiles(format('{0}{1}', github.workspace, '/yarn.lock')) }}
+          restore-keys: |
+            ${{ matrix.os }}-
+
+      - name: Install deps
+        run: yarn install
+
+      - name: Build package
+        if: ${{ matrix.steps == 'build' }}
+        run: |
+          cd packages/lys
+          yarn prepublishOnly
+
+      - name: Linting @fleur/lys
+        if: ${{ matrix.steps == 'lint' }}
+        run: |
+          cd packages/lys
+          yarn eslint ./src
