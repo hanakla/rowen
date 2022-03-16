@@ -19,7 +19,9 @@ describe("main", () => {
 
     // Rowen.init({ configFile })
 
-    const mock = jest.spyOn(Rowen, "loadFile").mockImplementation(baseConfig);
+    const mock = jest
+      .spyOn(Rowen, "loadFile")
+      .mockImplementation(() => baseConfig);
 
     try {
       await Rowen.script({ env: "production" }, async ($) => {
