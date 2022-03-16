@@ -8,6 +8,7 @@ import { PilotLight } from "../PilotLight";
 export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
   const { envConfig: envOption } = rowen;
   const ctx = $.ctx(commonCtx);
+  if (ctx.mode !== "deploy") throw new Error("Unexpected mode on fetchTask");
 
   rowen.log.log("fetch: Fetching repository to workspace...");
 

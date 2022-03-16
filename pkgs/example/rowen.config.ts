@@ -1,7 +1,7 @@
 import path from "path";
-import { RowenConfig, releases } from "@hanakla/rowen";
+import { presets, rowenConfig } from "@hanakla/rowen";
 
-export default async (): Promise<RowenConfig> => {
+export default rowenConfig((): Promise<RowenConfig> => {
   return {
     default: {
       deployTo: "/home/hanakla/rowen-test",
@@ -29,6 +29,8 @@ export default async (): Promise<RowenConfig> => {
       },
     },
     flows: async (rowen) => {
+      rowen.on.caughtError(releases.caughtError());
+
       rowen.on.beforeFetch(
         releases.beforeFetch({
           sourceDir: "./pkgs/rowen",
@@ -47,7 +49,7 @@ export default async (): Promise<RowenConfig> => {
 
       rowen.on.syncStep(releases.syncStep());
 
-      rowen.on["releases:after"];
+      rowen.on["releases:rollback-symlink-updated"](async ($) => {});
     },
   };
 };

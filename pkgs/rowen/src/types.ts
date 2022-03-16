@@ -14,11 +14,16 @@ export type DeploymentError = {
 
 export type RowenContexts = {
   [commonCtx]: {
-    env: string;
-    branch: string;
-    workspace: string;
     silent: boolean;
+  } & {
+    mode: "deploy";
+    branch: string | null;
+    workspace: string | null;
   };
+  // | {
+  //     mode: "rollback";
+  //     env: string;
+  //   }
 } & ExtendedRowenContexts;
 
 export type RowenEvents = {

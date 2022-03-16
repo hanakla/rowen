@@ -9,6 +9,7 @@ import {
   CommonOption,
   DeployEnvOption,
   RowenConfig,
+  RowenContexts,
   RowenEvents,
 } from "./types";
 import { clockSpin, spin } from "./utils";
@@ -46,7 +47,10 @@ export default class Rowen {
   public options: { verbose: boolean } = { verbose: false };
   public env: string | null = null;
   public branch: string | null = null;
-  public ctx: Map<symbol, any> = new Map();
+  public ctx: {
+    set<K extends keyof RowenContexts>(k: K, value: RowenContexts[K]): void;
+    get<K extends keyof RowenContexts>(k: K): RowenContexts[K];
+  } = new Map();
 
   public on = on<RowenEvents>();
   public log: Log = null as any;
@@ -94,31 +98,32 @@ export default class Rowen {
     });
   }
 
-  public async rollback({ env, silent }: { env: string; silent?: boolean }) {
-    this.env = env;
+  // public async rollback({ env, silent }: { env: string; silent?: boolean }) {
+  //   this.env = env;
 
-    this.sshPool ??= new ConnectionPool(this.envConfig.servers, {
-      log: this.options.verbose ? console.log : null,
-    });
+  //   this.sshPool ??= new ConnectionPool(this.envConfig.servers, {
+  //     log: this.options.verbose ? console.log : null,
+  //   });
 
-    this.$ = new PilotLight(this, this.sshPool);
-    this.log.silent = !!silent;
+  //   this.$ = new PilotLight(this, this.sshPool);
+  //   this.log.silent = !!silent;
 
-    this.ctx.set(Rowen.ctx, {
-      env,
-      branch: null,
-      silent,
-      workspace: null,
-    });
-  }
+  //   this.ctx.set(Rowen.ctx, {
+  //     mode: "rollback",
+  //     env,
+  //     silent: !!silent,
+  //   });
+
+  //   this.emit("rollback", this.$);
+  // }
 
   public async deploy({
     env,
     branch,
-    silent,
+    silent = true,
   }: {
     env: string;
-    branch?: string;
+    branch: string;
     silent?: boolean;
   }) {
     this.env = env;
@@ -131,7 +136,8 @@ export default class Rowen {
     this.log.silent = !!silent;
 
     this.ctx.set(Rowen.ctx, {
-      env,
+      mode: "deploy",
+      // env,
       branch,
       silent,
       workspace: null,

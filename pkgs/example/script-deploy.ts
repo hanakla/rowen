@@ -1,10 +1,11 @@
-import Rowen from "rowen/src";
-import { Remote } from "rowen/src/remote";
+import Rowen from "@hanakla/rowen";
+// import { Remote } from "rowen/";
 
 (async () => {
   const rowen = await Rowen.init({ verbose: true });
 
-  rowen.on["fetched"](async ($) => {
+  rowen.on.beforeFetch(async ($) => {
+    $.ctx.set();
     $.remotePrefix += `eval '$(nodenv init -)';`;
 
     const a = await $.local`hostname`({
@@ -26,7 +27,7 @@ import { Remote } from "rowen/src/remote";
   await rowen.deploy({ env: "sandbox" });
 })();
 
-declare module "rowen/src" {
+declare module "@hanakla/rowen" {
   export interface ExtendedRowenEvents {
     "product:build": [Remote];
   }

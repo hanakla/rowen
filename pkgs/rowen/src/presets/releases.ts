@@ -16,6 +16,10 @@ declare module "../" {
       sharedPath: string | null;
       keepReleases: number;
       releasesPath: string;
+      state: {
+        isCurrentUpdated: boolean;
+        isReleaseDirCreated: boolean;
+      };
     };
   }
 }
@@ -53,6 +57,10 @@ export const releases = {
         sharedPath: enableShared ? "./shared" : null,
         currentPath: path.join("./current"),
         releasesPath,
+        state: {
+          isReleaseDirCreated: false,
+          isCurrentUpdated: false,
+        },
       };
 
       $.log(`└ releases: release id: ${id}`);
@@ -77,6 +85,8 @@ export const releases = {
         cwd: deployTo,
       });
 
+      $.ctx(releaseCtx).state.isReleaseDirCreated = true;
+
       $.log(`└ deployStep(releases): Creating shared on ./shared`);
 
       if (sharedPath) {
@@ -84,6 +94,8 @@ export const releases = {
           cwd: deployTo,
         });
       }
+
+      $.ctx(releaseCtx).state.isReleaseDirCreated = true;
 
       await spin({
         spinner: {
@@ -100,6 +112,9 @@ export const releases = {
         cwd: deployTo,
       });
 
+      $.ctx(releaseCtx).state.isCurrentUpdated = true;
+
+      await $.remote`[ -f CURRENT_RELEASE ] && (cat ./CURRENT_RELEASE > ./PREVIOUS_RELEASE)`;
       await $.remote`echo "${releaseId}" > ./CURRENT_RELEASE`({
         cwd: deployTo,
       });
@@ -111,4 +126,23 @@ export const releases = {
       );
     };
   },
+  caughtError: () => {
+    return async ($: PilotLight) => {
+      const {
+        releasesPath,
+        state: { isReleaseDirCreated, isCurrentUpdated },
+      } = $.ctx(releaseCtx);
+
+      $.log("└ caughtError(releases): Detect caught error, rollback release..");
+
+      if (isCurrentUpdated) {
+        const safeReleasesPath = normalizeTailSlash(releasesPath);
+        await $.remote`ln -sf ${
+          safeReleasesPath + "/" + "$(cat PREVIOUS_RELEASE)"
+        } ./current`;
+      }
+    };
+  },
 };
+
+const normalizeTailSlash = (str: string) => str.replace(/\/$/, "");

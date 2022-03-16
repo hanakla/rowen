@@ -7,4 +7,7 @@ export interface ExtraRowenConfig {
 
 export { type RowenConfig, type DeployEnvOption } from "./types";
 export { default } from "./Rowen";
-export { releases } from "./extend/releases";
+export { rowenConfig } from "./rowenConfig";
+
+import { releases } from "./presets/releases";
+export const presets = { releases };
