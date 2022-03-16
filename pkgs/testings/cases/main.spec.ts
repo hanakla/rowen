@@ -9,7 +9,7 @@ describe("main", () => {
       },
       envs: {
         production: {
-          servers: ["user@localhost"],
+          servers: ["runner@localhost"],
         },
       },
       flows: (rowen) => {
@@ -28,7 +28,8 @@ describe("main", () => {
         await $.remote`echo 'hi'`;
       });
     } catch (e) {
-      console.dir((e as any).message, (e as any).errors);
+      console.dir((e as any).message);
+      console.dir((e as any).errors);
       throw e;
     }
 
