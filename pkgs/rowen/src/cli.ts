@@ -16,7 +16,7 @@ yargs(hideBin(process.argv))
         })
         .option("branch", {
           alias: "b",
-          describe: "Deploying branch name",
+          describe: "Deploying branch or ref",
           type: "string",
         })
         .option("config", {
@@ -66,7 +66,7 @@ yargs(hideBin(process.argv))
 
       await rowen.deploy({
         env,
-        branch,
+        deployRef: branch,
         silent: v.silent,
       });
     }
