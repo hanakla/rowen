@@ -1,10 +1,11 @@
 import Rowen, { rowenConfig, presets } from "@hanakla/rowen";
+import { constants } from "./constants";
 
 describe("releases", () => {
   it("presets.releases test", async () => {
     const config = rowenConfig(() => ({
       default: {
-        repository: `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}@github.com/hanakla/rowen`,
+        repository: constants.repo,
         deployTo: "rowen-tests",
       },
       envs: {
@@ -33,9 +34,9 @@ describe("releases", () => {
           configFile: "",
         })
       ).deploy({
-        branch: "master",
+        deployRef: "main",
         env: "production",
-        silent: false,
+        silent: true,
       });
     } catch (e) {
       console.dir((e as any).errors);

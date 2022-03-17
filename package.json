@@ -6,7 +6,8 @@
   "author": "Hanakla<hanakla.dev@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "wsrun -m build"
+    "build": "wsrun -m build",
+    "watch": "wsrun -m watch"
   },
   "workspaces": [
     "pkgs/*"

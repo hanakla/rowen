@@ -33,9 +33,10 @@ export const fetchTask = async (rowen: Rowen, $: PilotLight) => {
       ctx.deployGitRef
     }`,
   })(async () =>
-    $.local.nothrow`git clone --depth=1 -b ${
+    $.local
+      .nothrow`git clone --depth=1 ${envOption.repository!} ${ctx.workspace!} && git checkout ${
       ctx.deployGitRef
-    } ${envOption.repository!} ${ctx.workspace!}`({
+    }`({
       cwd: workspace,
     })
   );

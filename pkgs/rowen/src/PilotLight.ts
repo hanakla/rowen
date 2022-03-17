@@ -77,6 +77,7 @@ export class PilotLight {
         then: (fullfiled: (v: RemoteResult) => any, rejected: any) => {
           return new Promise<RemoteResult>((resolve, reject) => {
             const cmd = String.raw(template, ...subs.map((str) => quote(str)));
+            console.log(cmd);
             const proc = exec(cmd, {
               cwd: this.localCwd ?? undefined,
               ..._opt,

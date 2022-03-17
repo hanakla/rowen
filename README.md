@@ -50,3 +50,7 @@ An SSH deployment script kit, inspired by shipit.
    await rowen.fetch();
    await rowen.deploy();
    ```
+
+## Documentation
+
+See [docs](./docs/index.md)

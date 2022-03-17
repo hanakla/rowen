@@ -148,13 +148,18 @@ export default class Rowen {
 
   public async deploy({
     env,
-    branch,
+    deployRef,
     silent = true,
   }: {
     env: string;
-    branch: string;
+    deployRef: string;
     silent?: boolean;
   }) {
+    if (!deployRef) {
+      this.log.error("Specify `deployRef` required in Rowen.deploy");
+      return;
+    }
+
     this.env = env;
 
     this.sshPool ??= new ConnectionPool(this.envConfig.servers, {
@@ -166,8 +171,8 @@ export default class Rowen {
 
     this.ctx.set(Rowen.ctx, {
       mode: "deploy",
-      // env,
-      deployGitRef: branch,
+      env,
+      deployGitRef: deployRef,
       silent,
       workspace: null!,
     });

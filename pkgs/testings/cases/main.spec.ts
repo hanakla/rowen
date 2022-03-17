@@ -1,10 +1,11 @@
 import Rowen, { rowenConfig } from "@hanakla/rowen";
+import { constants } from "./constants";
 
 describe("main", () => {
   it("Execute command on remote", async () => {
     const baseConfig = rowenConfig(() => ({
       default: {
-        repository: "git@github.com:hanakla/rowen.git",
+        repository: constants.repo,
         deployTo: "rowen-tests",
       },
       envs: {

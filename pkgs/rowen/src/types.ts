@@ -17,6 +17,7 @@ export type RowenContexts = {
     silent: boolean;
   } & {
     mode: "deploy";
+    env: string;
     deployGitRef: string;
     workspace: string;
   };
